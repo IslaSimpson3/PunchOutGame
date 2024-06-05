@@ -5,7 +5,9 @@
 import pygame
 from pygame.locals import *
 import random
+import serial
 
+adruinoData = serial.Serial(port= '/dev/cu.usbmodem101', baudrate = 57600, timeout =1)
 pygame.init()
 screen_width = 833
 screen_height = 581
@@ -25,6 +27,7 @@ platform_velocity= 3
 background_IMG = pygame.image.load('background.jpg')
 punchout_img = pygame.image.load('cooltext459279938783312.gif')
 boxer_stand = pygame.transform.scale(pygame.image.load('boxer-stand.png'), (85, 200))
+boxer_block = pygame.transform.scale(pygame.image.load('boxer-block.png'), (85, 200))
 boxer_left_punch = pygame.transform.scale(pygame.image.load('boxer-left-punch.png'), (85, 200))
 boxer_right_punch = pygame.transform.scale(pygame.image.load('boxer-right-punch.png'), (85, 200))
 enemy_stand = pygame.transform.scale(pygame.image.load('enemy-stand.png'), (150, 260))
@@ -32,15 +35,18 @@ enemy_punch1 = pygame.transform.scale(pygame.image.load('enemy-punch1.png'), (15
 enemy_punch2 = pygame.transform.scale(pygame.image.load('enemy-punch2.png'), (170, 275))
 enemy_block = pygame.transform.scale(pygame.image.load('enemy-block.png'), (150, 260))
 
+
 def collision_check(collision_tolerance,enemy,boxer,):
-   if boxer.rect.colliderect(enemy):
-        if abs(enemy.rect.x - boxer.rect.x) < collision_tolerance: #if they collide
-                enemy.health = enemy.health - 1
-                boxer.punches = boxer.punches + 1
-   if enemy.rect.colliderect(boxer):
-        if abs(boxer.rect.x - enemy.rect.x) < collision_tolerance: #if they collide
-                boxer.health = boxer.health - 1
-                enemy.punches = enemy.punches + 1                                          
+   if boxer.image == boxer_left_punch or boxer.image == boxer_right_punch:
+        if boxer.rect.colliderect(enemy):
+            if abs(enemy.rect.x - boxer.rect.x) < collision_tolerance: #if they collide
+                enemy.Ehealth = enemy.Ehealth - 1
+                boxer.Bpunches = boxer.Bpunches + 1
+   if enemy.action =='punch_left' or enemy.action =='punch_right':
+        if enemy.rect.colliderect(boxer):
+            if abs(boxer.rect.x - enemy.rect.x) < collision_tolerance: #if they collide
+                boxer.Bhealth = boxer.Bhealth - 1
+                enemy.Epunches = enemy.Epunches + 1                                          
 #collison when boxer hits enemy 
     #health is deceased 
     #punch number increases 
@@ -53,12 +59,12 @@ def endscreen(surface,boxer,enemy):
    you = pygame.transform.scale(pygame.image.load('cooltext459331271650950.png'), (100, 100))
    pygame.draw.rect(surface,(0,0,0), pygame.Rect(150, 10, 500, screen_height - 20)) #x,y,wight,hieght 
    font = pygame.font.Font(None, 30)
-   boxerpunch_text = font.render("Number of punches " + str(boxer.punches),True, (255, 255, 255))
-   boxerhealth_text = font.render("Health score " + str(boxer.health),True, (255, 255, 255))
-   boxerblocks_text = font.render("Number of blocks " + str(boxer.blocks), True, (255, 255, 255))
-   enemypunch_text = font.render("Number of punches " + str(enemy.punches),True, (255, 255, 255))
-   enemyblocks_text = font.render("Number of blocks " + str(enemy.blocks),True, (255, 255, 255))
-   enemyhealth_text = font.render("Health score " + str(enemy.health),True, (255, 255, 255))
+   boxerpunch_text = font.render("Number of punches " + str(boxer.Bpunches),True, (255, 255, 255))
+   boxerhealth_text = font.render("Health score " + str(boxer.Bhealth),True, (255, 255, 255))
+   boxerblocks_text = font.render("Number of blocks " + str(boxer.Bblocks), True, (255, 255, 255))
+   enemypunch_text = font.render("Number of punches " + str(enemy.Epunches),True, (255, 255, 255))
+   enemyblocks_text = font.render("Number of blocks " + str(enemy.Eblocks),True, (255, 255, 255))
+   enemyhealth_text = font.render("Health score " + str(enemy.Ehealth),True, (255, 255, 255))
    
    surface.blit(toughRob, (153, 10))
    surface.blit(you,(400, 10))
@@ -66,15 +72,11 @@ def endscreen(surface,boxer,enemy):
    surface.blit(enemyhealth_text, (153, 200))
    surface.blit(enemyblocks_text, (153, 100))
    surface.blit(boxerpunch_text, (400, 300))
-   surface.blit(boxerblocks_text, (400, 200))
-   surface.blit(boxerhealth_text, (400, 100))
-   
-  
-
+   surface.blit(boxerblocks_text, (400, 100))
+   surface.blit(boxerhealth_text, (400, 200))
    pygame.display.flip()
    pygame.time.delay(10000)
 
-   
 
 class Boxer:
     def __init__(self, x, y): #function names and setup taken from last project (not the code inside)
@@ -82,21 +84,24 @@ class Boxer:
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
-        self.health = 100
-        self.punches = 0 
-        self.blocks = 0
+        self.Bhealth = 100
+        self.Bpunches = 0 
+        self.Bblocks = 0
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)
 
     def punch_left(self):
-        self.image = boxer_left_punch
+       self.image = boxer_left_punch
 
     def punch_right(self):
         self.image = boxer_right_punch
 
     def stand(self):
         self.image = boxer_stand
+
+    def block(self):
+        self.image = boxer_block
 
 class Enemy:
     def __init__(self, x, y):
@@ -107,9 +112,9 @@ class Enemy:
         self.velocity = platform_velocity #last project 
         self.action_time = 0  # Initialize action_time
         self.action = 'stand' #chatgpt
-        self.health = 100
-        self.punches = 0 
-        self.blocks = 0
+        self.Ehealth = 100
+        self.Epunches = 0 
+        self.Eblocks = 0
         self.move_timer = 0 #chatgpt
         self.move_duration = random.randint(30, 120) #chatgpt
 
@@ -152,13 +157,6 @@ class Enemy:
         if self.rect.left <= 150 or self.rect.right >= screen_width - 250:
             self.velocity *= -1
 
-#class Rounds():
-   # def __init__(timer_ticking,round):
-      #  if timer_ticking1 = False:
-            #round = round + 1
-
-        #if round > 3:
-
 enemy = Enemy(340, 150) #last project 
 boxer = Boxer(350, 250) #last project 
 starttime = pygame.time.get_ticks()
@@ -171,36 +169,52 @@ while run :
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
-        
+    if adruinoData.inWaiting() > 0:
+        dataPacket = adruinoData.readline().decode().strip()
+        MPUValues = dataPacket.split(',')
+        punch1 = MPUValues[0]
+        punch2 = MPUValues[1]
+        print(punch1)
+        if punch1 == '1':
+            boxer.punch_left() 
+            print('punched')
+        else:
+            boxer.stand()
+       # if len(MPUValues) == 2:
+           # RateYaw1, RateYaw2 = [int(val) for val in MPUValues[:2]]    #(yaw1, yaw2, bothyaw)
 #----------------------------------- will be boxing gloves
-        elif event.type == KEYDOWN:
-            if event.key == K_l:
-                boxer.punch_left()
-                if enemy.image != enemy_block:
-                    collision_check(collision_tolerance, enemy, boxer)
-                else:
-                    enemy.blocks = enemy.blocks + 1
+        
+            #if :
+               # print("punch1 ")
+               # boxer.punch_left(boxer_left_punch)
+               # if enemy.image != enemy_block:
+                   # collision_check(collision_tolerance, enemy, boxer)
+                #else:
+                    #enemy.Eblocks = enemy.Eblocks + 1
+#change to if not elif 
+            #if RateYaw2 > 75:
+             #   boxer.punch_right()
+              #  if enemy.image != enemy_block:
+               #     collision_check(collision_tolerance, enemy, boxer)
+                #else: 
+                 #   enemy.Eblocks = enemy.Eblocks + 1
+            #elif event.key == BY:
+               # boxer.block()
+               # collision_check(collision_tolerance, enemy, boxer)
 
-            elif event.key == K_r:
-                boxer.punch_right()
-                if enemy.image != enemy_block:
-                    collision_check(collision_tolerance, enemy, boxer)
-                else: 
-                    enemy.blocks = enemy.blocks + 1
 
-        elif event.type == KEYUP:
-            if event.key in [K_l, K_r]:
-                boxer.stand()
+        #elif event.type == KEYUP:
+          # if event.key in [Y1, Y2, BY]:
+               # boxer.stand()
         
 #------------------------------------ will be boxing gloves 
         if enemy.rect.colliderect(boxer):
-            if boxer.image != boxer.blocks:
+            if boxer.image != boxer_block:
                 collision_check(collision_tolerance, enemy, boxer)
             else:
-                boxer.blocks = boxer.blocks + 1
+                boxer.Bblocks = boxer.Bblocks + 1
     duration_of_game =(pygame.time.get_ticks()-starttime) /1000 #chatgpt
-    print(duration_of_game)
-    if duration_of_game > 30:
+    if duration_of_game > 20:
         endscreen(screen, boxer, enemy)
         run = False
 
@@ -231,3 +245,16 @@ pygame.quit()
 #timers which runs for 1min saying what round the game is on 
 # boxing match happens DONE 
 # after round 3 there is a screen saying who won. 
+#if adruinoData.inWaiting() > 0:
+       # dataPacket = adruinoData.readline().decode().strip()
+        #MPUValues = dataPacket.split(',')
+       # if len(MPUValues) == 4:
+          #  Y1, Y2 = [int(val) for val in MPUValues]
+
+            # Convert joystick values to movement changes
+            #player1.move((j1Y-512)/50, 0)  # Assuming 512 is center position
+           # player2.move((j2Y-512)/50, 0)
+
+            # Jump if Y-axis value is low enough (assuming center is 512)
+           #if Y1 > 100: boxer.punch_left()
+           # if Y2 > 100: boxer.punch_right()
