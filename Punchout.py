@@ -23,7 +23,7 @@ platform_velocity= 3
 #pygame.wait(500)
 #remove.ready_img
 
-# Load images
+# Load images + sound 
 background_IMG = pygame.image.load('background.jpg')
 punchout_img = pygame.image.load('cooltext459279938783312.gif')
 boxer_stand = pygame.transform.scale(pygame.image.load('boxer-stand.png'), (85, 200))
@@ -34,17 +34,22 @@ enemy_stand = pygame.transform.scale(pygame.image.load('enemy-stand.png'), (150,
 enemy_punch1 = pygame.transform.scale(pygame.image.load('enemy-punch1.png'), (150, 260))
 enemy_punch2 = pygame.transform.scale(pygame.image.load('enemy-punch2.png'), (170, 275))
 enemy_block = pygame.transform.scale(pygame.image.load('enemy-block.png'), (150, 260))
-
+punch_sound = pygame.mixer.Sound ("mixkit-cartoon-punch-2149.wav")
+hit_sound = pygame.mixer.Sound ("mixkit-boxer-getting-hit-2055.wav")
+crowd_background = pygame.mixer.Sound("mixkit-huge-crowd-cheering-victory-462.wav")
+block_sound = pygame.mixer.Sound("mixkit-punch-through-air-2141.mp3") 
 
 def collision_check(collision_tolerance,enemy,boxer,):
    if boxer.image == boxer_left_punch or boxer.image == boxer_right_punch:
         if boxer.rect.colliderect(enemy):
             if abs(enemy.rect.x - boxer.rect.x) < collision_tolerance: #if they collide
+                pygame.mixer.Sound.play(hit_sound)
                 enemy.Ehealth = enemy.Ehealth - 1
                 boxer.Bpunches = boxer.Bpunches + 1
    if enemy.action =='punch_left' or enemy.action =='punch_right':
         if enemy.rect.colliderect(boxer):
             if abs(boxer.rect.x - enemy.rect.x) < collision_tolerance: #if they collide
+                pygame.mixer.Sound.play(hit_sound)
                 boxer.Bhealth = boxer.Bhealth - 1
                 enemy.Epunches = enemy.Epunches + 1                                          
 #collison when boxer hits enemy 
@@ -65,6 +70,15 @@ def endscreen(surface,boxer,enemy):
    enemypunch_text = font.render("Number of punches " + str(enemy.Epunches),True, (255, 255, 255))
    enemyblocks_text = font.render("Number of blocks " + str(enemy.Eblocks),True, (255, 255, 255))
    enemyhealth_text = font.render("Health score " + str(enemy.Ehealth),True, (255, 255, 255))
+   boxer_total = boxer.Bpunches + boxer.Bhealth + boxer.Bblocks 
+   enemy_total = enemy.Epunches + enemy.Eblocks + enemy.Eblocks
+   #if boxer_total > enemy_total:
+       #you win image 
+       # win sound 
+   #else:
+       # you lose image
+       #lose sound 
+  # elif #draw image 
    
    surface.blit(toughRob, (153, 10))
    surface.blit(you,(400, 10))
@@ -101,6 +115,7 @@ class Boxer:
         self.image = boxer_stand
 
     def block(self):
+        pygame.mixer.Sound.play(block_sound)
         self.image = boxer_block
 
 class Enemy:
@@ -130,10 +145,13 @@ class Enemy:
                 self.action_time = 60 #chatgpt 
 
             if self.action == 'punch_left':
+                pygame.mixer.Sound.play(punch_sound)
                 self.image = enemy_punch1
             elif self.action == 'punch_right':
+                pygame.mixer.Sound.play(punch_sound)
                 self.image = enemy_punch2
             elif self.action == 'block':
+                pygame.mixer.Sound.play(block_sound)
                 self.image = enemy_block
             elif self.action == 'stand':
                 self.image = enemy_stand
@@ -164,6 +182,7 @@ starttime = pygame.time.get_ticks()
 # GAME LOOP
 run = True
 while run :
+    #pygame.mixer.Sound.play(crowd_background)
     screen.blit(background_IMG, (0, 0))
     screen.blit(punchout_img, (80, 25))
     for event in pygame.event.get():
@@ -174,12 +193,17 @@ while run :
         MPUValues = dataPacket.split(',')
         punch1 = MPUValues[0]
         punch2 = MPUValues[1]
+        #block = MPUValues[2]
         print(punch1)
         if punch1 == '1':
+            pygame.mixer.Sound.play(punch_sound)
             boxer.punch_left() 
             print('punched')
         else:
             boxer.stand()
+        if punch2 == '1':
+            pygame.mixer.Sound.play(punch_sound)
+            boxer.punch_right() 
        # if len(MPUValues) == 2:
            # RateYaw1, RateYaw2 = [int(val) for val in MPUValues[:2]]    #(yaw1, yaw2, bothyaw)
 #----------------------------------- will be boxing gloves
@@ -214,7 +238,7 @@ while run :
             else:
                 boxer.Bblocks = boxer.Bblocks + 1
     duration_of_game =(pygame.time.get_ticks()-starttime) /1000 #chatgpt
-    if duration_of_game > 20:
+    if duration_of_game > 30:
         endscreen(screen, boxer, enemy)
         run = False
 
@@ -226,35 +250,6 @@ while run :
     clock.tick(60)  # Limit the frame rate to 60 frames per second
 
 pygame.quit()
-# next steps 
-# varables that store (done with collision )
-    #how many punches 
-    #how many blocks 
-    #health score 
-
-# round only lasts 2mins, when timer is up round 2 then round 3 
-    #after that a text box outputting
-        # who won 
-        # health of both 
-        # number of punches 
-        # how many blocks 
-
-
-#whats in the code:
-#ready go images that disapear when the game starts 
-#timers which runs for 1min saying what round the game is on 
-# boxing match happens DONE 
-# after round 3 there is a screen saying who won. 
-#if adruinoData.inWaiting() > 0:
-       # dataPacket = adruinoData.readline().decode().strip()
-        #MPUValues = dataPacket.split(',')
-       # if len(MPUValues) == 4:
-          #  Y1, Y2 = [int(val) for val in MPUValues]
-
-            # Convert joystick values to movement changes
-            #player1.move((j1Y-512)/50, 0)  # Assuming 512 is center position
-           # player2.move((j2Y-512)/50, 0)
-
-            # Jump if Y-axis value is low enough (assuming center is 512)
-           #if Y1 > 100: boxer.punch_left()
-           # if Y2 > 100: boxer.punch_right()
+# sound in the gsme 
+# a start screen 
+# says you won or lost at the end 
